@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkBuddy Slot Status</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='logo.ico') }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='logo.ico') }}">
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.6.1/firebase-database.js"></script>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #191919;
+            font-family: 'Inter', sans-serif;
+        }
+        .status-box {
+            padding: 10px;
+            color: white;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .status-box.occupied { background-color: #e74c3c; }
+        .status-box.free { background-color: #2ecc71; }
+        .status-box.reserved { background-color: #3498db; }
+        .status-box.parked { background-color: #f39c12; }
+        .status-box.closed { background-color: #95a5a6; }
+        button, .status-box, .slot, .gate {
+            transition: 500ms;
+        }
+        button:hover, .slot:hover, .gate:hover {
+            transform: scale(1.02);
+            opacity: 0.8;
+        }
+        .status-box:hover { opacity: 0.8; }
+        .slot:hover, .gate:hover { border-radius: 15px; }
+        /* Modal styling */
+        #modal-overlay, #cancel-overlay {
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+        .prediction-form {
+            background-color: #2c3e50;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .prediction-form input, .prediction-form select {
+            background-color: #34495e;
+            color: white;
+            border: none;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 5px;
+        }
+        .prediction-form button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .prediction-form button:hover {
+            background-color: #2980b9;
+        }
+        #prediction-result {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        .graph-container {
+            background-color: #2c3e50;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .graph-container img {
+            width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+        .prediction-form, .analytics-container {
+            background-color: #2c3e50;
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        .prediction-form input, .prediction-form select {
+            background-color: #34495e;
+            color: white;
+            border: none;
+            padding: 12px;
+            margin: 10px 0;
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        .prediction-form button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .prediction-form button:hover {
+            background-color: #2980b9;
+        }
+        #prediction-result {
+            margin-top: 20px;
+            font-weight: bold;
+            font-size: 18px;
+            padding: 15px;
+            background-color: #34495e;
+            border-radius: 8px;
+        }
+        .graph-container {
+            background-color: #34495e;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .graph-container img {
+            width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+        .analytics-info {
+            background-color: #34495e;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .analytics-info h3 {
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+        .analytics-info p, .analytics-info li {
+            margin-bottom: 5px;
+        }
+        .toast-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #2c3e50;
+            border-radius: 10px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-width: 400px;
+            width: 90%;
+        }
+        .toast-modal h3 {
+            color: #ecf0f1;
+            margin-bottom: 10px;
+        }
+        .toast-modal p {
+            color: #bdc3c7;
+            margin-bottom: 20px;
+        }
+        .toast-modal button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .toast-modal button:hover {
+            background-color: #2980b9;
+        }
+        .reserved-slots {
+            background-color: #34495e;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        .reserved-slot {
+            background-color: #2c3e50;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .reserved-slot h4 {
+            color: #3498db;
+            margin-bottom: 5px;
+        }
+        .reserved-slot p {
+            color: #ecf0f1;
+            margin: 5px 0;
+        }
+        @media (max-width: 640px) {
+            .prediction-form form {
+                grid-template-columns: 1fr;
+            }
+            .prediction-form button {
+                margin-top: 1rem;
+            }
+        }
+        #prediction-result {
+            transition: all 0.3s ease;
+        }
+        #prediction-result.visible {
+            display: block;
+        }
+        .analytics-container {
+            background-color: rgba(55, 65, 81, 0.7);
+            backdrop-filter: blur(10px);
+        }
+
+        .analytics-info {
+            transition: all 0.3s ease;
+        }
+
+        .analytics-info:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        #avg-occupancy li, #slot-utilization li {
+            background-color: rgba(75, 85, 99, 0.6);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .analytics-container {
+            
+            backdrop-filter: blur(10px);
+        }
+
+        .analytics-info {
+            transition: all 0.3s ease;
+        }
+
+        .analytics-info:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .analytics-info h3 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #60a5fa;
+            margin-bottom: 1rem;
+            letter-spacing: 0.5px;
+        }
+
+        .analytics-info p {
+            font-size: 1rem;
+            line-height: 1.5;
+            margin-bottom: 0.5rem;
+        }
+
+        .analytics-info p span:first-child {
+            font-weight: 500;
+            color: #e2e8f0;
+        }
+
+        .analytics-info p span:last-child {
+            font-weight: 600;
+        }
+
+        #avg-occupancy li, #slot-utilization li {
+            background-color: rgba(75, 85, 99, 0.6);
+            padding: 0.75rem 1rem;
+            border-radius: 0.375rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.95rem;
+            margin-bottom: 0.5rem;
+        }
+
+        #avg-occupancy li span:first-child, #slot-utilization li span:first-child {
+            font-weight: 500;
+            color: #e2e8f0;
+        }
+
+        #avg-occupancy li span:last-child, #slot-utilization li span:last-child {
+            font-weight: 600;
+            color: #60a5fa;
+        }
+
+        .graph-container h3 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: #60a5fa;
+            margin-bottom: 1rem;
+            letter-spacing: 0.5px;
+        }
+
+        .graph-container img {
+            transition: all 0.3s ease;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .graph-container img:hover {
+            transform: scale(1.02);
+        }
+
+        /* Add this new style for the main analytics title */
+        #analytics-section > h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #f3f4f6;
+            margin-bottom: 2rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            letter-spacing: 1px;
+        }
+
+        .analytics-info .stat-value {
+            font-family: 'Inter', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: #60a5fa;
+            background-color: rgba(37, 99, 235, 0.1);
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            transition: all 0.3s ease;
+        }
+
+        .analytics-info .stat-value:hover {
+            background-color: rgba(37, 99, 235, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .analytics-info p {
+            font-size: 1rem;
+            line-height: 1.5;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .analytics-info p span:first-child {
+            font-weight: 500;
+            color: #e2e8f0;
+        }
+
+        /* Add specific colors for each stat */
+        #total-occupancy {
+            color: #ffffff; /* green */
+        }
+
+        #busiest-time {
+            color: #ffffff; /* red */
+        }
+
+        #quietest-time {
+            color: #ffffff; /* blue */
+        }
+
+        .chart-wrapper {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .graph-container {
+            background-color: #2c3e50;
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .chart-title {
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 0.75rem;
+            background-color: rgba(0, 0, 0, 0.2);
+            margin: 0;
+        }
+
+        .chart-wrapper {
+            aspect-ratio: 1 / 1;
+            width: 100%;
+            padding: 0.5rem;
+        }
+
+        @media (min-width: 640px) {
+            .chart-title {
+                font-size: 1.25rem;
+                padding: 1rem;
+            }
+
+            .chart-wrapper {
+                padding: 1rem;
+            }
+        }
+    </style>
+</head>
+<a href="{{ url_for('login') }}" target="_blank" class="bg-blue-500 text-white py-2 px-4 rounded-md absolute top-4 right-4">
+    Admin Login
+</a>
+<body class="bg-gray-900 mt-20 flex flex-col items-center justify-center min-h-screen p-4">
+
+    <div class="container bg-gray-800 p-4 sm:p-8 rounded-lg shadow-lg w-full max-w-screen-lg mb-8">
+        <h1 class="text-white text-2xl sm:text-3xl text-center font-bold mb-6">ParkBuddy🚗 Slot & Gate Status</h1>
+
+        
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+            <!-- Slot 1 -->
+            <div class="slot bg-gray-700 p-4 rounded-lg text-center">
+                <h2 class="text-xl text-white mb-4">Slot 1</h2>
+                <div id="slot1-status" class="status-box mb-4">Loading...</div>
+                <button id="slot1-reserve-btn" class="bg-blue-500 text-white py-2 px-4 rounded-md w-full mb-2">Reserve Slot</button>
+                <button id="slot1-cancel-btn" class="bg-red-500 text-white py-2 px-4 rounded-md w-full" style="display: none;">Cancel Reservation</button>
+            </div>
+            <!-- Slot 2 -->
+            <div class="slot bg-gray-700 p-4 rounded-lg text-center">
+                <h2 class="text-xl text-white mb-4">Slot 2</h2>
+                <div id="slot2-status" class="status-box mb-4">Loading...</div>
+                <button id="slot2-reserve-btn" class="bg-blue-500 text-white py-2 px-4 rounded-md w-full mb-2">Reserve Slot</button>
+                <button id="slot2-cancel-btn" class="bg-red-500 text-white py-2 px-4 rounded-md w-full" style="display: none;">Cancel Reservation</button>
+            </div>
+            <!-- Slot 3 -->
+            <div class="slot bg-gray-700 p-4 rounded-lg text-center">
+                <h2 class="text-xl text-white mb-4">Slot 3</h2>
+                <div id="slot3-status" class="status-box mb-4">Loading...</div>
+                <button id="slot3-reserve-btn" class="bg-blue-500 text-white py-2 px-4 rounded-md w-full mb-2">Reserve Slot</button>
+                <button id="slot3-cancel-btn" class="bg-red-500 text-white py-2 px-4 rounded-md w-full" style="display: none;">Cancel Reservation</button>
+            </div>
+            <!-- Gate Status -->
+            <div class="gate bg-gray-700 p-4 rounded-lg text-center">
+                <h2 class="text-xl text-white mb-4">Gate</h2>
+                <div id="gate-status" class="status-box">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container bg-gray-800 p-6 sm:p-10 rounded-lg shadow-lg w-full max-w-screen-xl mt-8">
+        <h2 class="text-white text-3xl sm:text-4xl text-center font-bold mb-8">Reserved Slots</h2>
+        <div class="reserved-slots">
+            <div id="reserved-slot1" class="reserved-slot"></div>
+            <div id="reserved-slot2" class="reserved-slot"></div>
+            <div id="reserved-slot3" class="reserved-slot"></div>
+        </div>
+    </div>
+
+
+    <!-- Prediction Section -->
+    <div class="container bg-gray-800 p-4 sm:p-6 md:p-8 rounded-lg shadow-lg w-full max-w-screen-xl mt-8">
+        <h2 class="text-white text-2xl sm:text-3xl md:text-4xl text-center font-bold mb-6">Parking Availability Prediction</h2>
+        <div class="prediction-form">
+            <form id="prediction-form" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <input type="number" id="day" name="day" min="1" max="30" required placeholder="Day (1-30)" class="col-span-1 w-full p-3 rounded-md bg-gray-700 text-white">
+                <input type="number" id="time" name="time" min="0" max="23" required placeholder="Hour (0-23)" class="col-span-1 w-full p-3 rounded-md bg-gray-700 text-white">
+                <select id="slot" name="slot" required class="col-span-1 w-full p-3 rounded-md bg-gray-700 text-white">
+                    <option value="">Select Slot</option>
+                    <option value="1">Slot 1</option>
+                    <option value="2">Slot 2</option>
+                    <option value="3">Slot 3</option>
+                </select>
+                <button type="submit" class="col-span-1 sm:col-span-3 bg-blue-500 text-white py-3 px-6 rounded-md hover:bg-blue-600 transition-colors duration-300">Predict Availability</button>
+            </form>
+        </div>
+        <div id="prediction-result" class="hidden mt-6 p-4 rounded-md bg-gray-700 text-white"></div>
+    </div>
+
+    <!-- Analytics Section -->
+    <div id="analytics-section" class="container bg-gray-800 p-6 sm:p-10 rounded-lg shadow-lg w-full max-w-screen-xl mt-8">
+        <h2 class="text-center">Parking Analytics</h2>
+        <div class="analytics-container bg-gray-800 p-0">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="analytics-info bg-gray-600 p-6 rounded-lg shadow">
+                    <h3>General Statistics</h3>
+                    <div class="space-y-4">
+                        <p class="flex justify-between items-center">
+                            <span class="text-gray-300">Total Occupancy:</span>
+                            <span id="total-occupancy" class="stat-value"></span>
+                        </p>
+                        <p class="flex justify-between items-center">
+                            <span class="text-gray-300">Busiest Time:</span>
+                            <span id="busiest-time" class="stat-value"></span>
+                        </p>
+                        <p class="flex justify-between items-center">
+                            <span class="text-gray-300">Quietest Time:</span>
+                            <span id="quietest-time" class="stat-value"></span>
+                        </p>
+                    </div>
+                </div>
+                <div class="analytics-info bg-gray-600 p-6 rounded-lg shadow">
+                    <h3>Average Occupancy by Category</h3>
+                    <ul class="text-gray-300" id="avg-occupancy"></ul>
+                </div>
+            </div>
+            <div class="analytics-info bg-gray-600 p-6 rounded-lg shadow mt-6">
+                <h3>Slot Utilization</h3>
+                <ul id="slot-utilization" class="grid grid-cols-1 sm:grid-cols-3 gap-4"></ul>
+            </div>
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="graph-container bg-gray-600 p-6 rounded-lg shadow">
+                    <h3 class="text-white text-xl font-semibold mb-4">Occupancy Throughout the Day</h3>
+                    <div class="chart-wrapper" style="position: relative; height: 300px;">
+                        <canvas id="occupancy-chart"></canvas>
+                    </div>
+                </div>
+                <div class="graph-container bg-gray-600 p-6 rounded-lg shadow">
+                    <h3>Slot Utilization</h3>
+                    <img id="slot-utilization-graph" class="w-full rounded-lg" alt="Slot Utilization Graph">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Overlay for Reservation -->
+    <div id="modal-overlay" class="fixed top-0 left-0 w-full h-full flex items-center justify-center z-50 hidden">
+        <div id="reservation-modal" class="bg-gray-800 rounded-lg p-6 relative w-full max-w-md">
+            <button id="close-modal-btn" class="absolute top-2 right-2 text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            <h2 class="text-xl text-white mb-4">Reservation Details</h2>
+            <form id="user-details-form" class="space-y-4">
+                <input type="text" id="user-name" placeholder="Your Name" required class="w-full p-2 rounded-md bg-gray-700 text-white">
+                <input type="tel" id="user-phone" placeholder="Phone Number" required class="w-full p-2 rounded-md bg-gray-700 text-white">
+                <input type="email" id="user-email" placeholder="Email Address" required class="w-full p-2 rounded-md bg-gray-700 text-white">
+                <input type="text" id="user-plate" placeholder="Number Plate" required class="w-full p-2 rounded-md bg-gray-700 text-white">
+                <input type="date" id="reservation-date" required class="w-full p-2 rounded-md bg-gray-700 text-white">
+                <input type="time" id="start-time" required class="w-full p-2 rounded-md bg-gray-700 text-white">
+                <input type="time" id="end-time" required class="w-full p-2 rounded-md bg-gray-700 text-white">
+                <button type="submit" class="bg-green-500 text-white py-2 px-4 rounded-md w-full">Confirm Reservation</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Overlay for Cancellation Confirmation -->
+    <div id="cancel-overlay" class="fixed top-0 left-0 w-full h-full flex items-center justify-center z-50 hidden">
+        <div id="cancel-modal" class="bg-gray-800 rounded-lg p-6 relative w-full max-w-md">
+            <button id="close-cancel-modal-btn" class="absolute top-2 right-2 text-white">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+
+            <h2 class="text-xl text-white mb-4">Cancel Reservation</h2>
+            <form id="cancel-details-form" class="space-y-4">
+                <input type="text" id="cancel-name" placeholder="Your Name" required class="w-full p-2 rounded-md bg-gray-700 text-white">
+                <input type="email" id="cancel-email" placeholder="Email Address" required class="w-full p-2 rounded-md bg-gray-700 text-white">
+                <button type="submit" class="bg-red-500 text-white py-2 px-4 rounded-md w-full">Confirm Cancellation</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast Messages -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50"></div>
+
+    
+    
+    <script>
+        // Firebase configuration
+        var firebaseConfig = {
+            apiKey: "AIzaSyAKwQcf9dQcRsRCj43MPBod1GBXz4xvtJ8",
+            authDomain: "parkbuddy-653a1.firebaseapp.com",
+            databaseURL: "https://parkbuddy-653a1-default-rtdb.firebaseio.com",
+            projectId: "parkbuddy-653a1",
+            storageBucket: "parkbuddy-653a1.appspot.com",
+            messagingSenderId: "171935755007",
+            appId: "YOUR_APP_ID"
+        };
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const database = firebase.database();
+
+        // Update slot availability based on status
+        function updateSlotAvailability(slotId, status) {
+            const statusBox = document.getElementById(`${slotId}-status`); // Fixed string interpolation
+            const reserveBtn = document.getElementById(`${slotId}-reserve-btn`); // Fixed string interpolation
+            const cancelBtn = document.getElementById(`${slotId}-cancel-btn`); // Fixed string interpolation
+
+            statusBox.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+            statusBox.className = `status-box ${status.toLowerCase()}`; // Fixed class name assignment
+
+            // Check status and adjust button visibility
+            if (status === "reserved" || status === "occupied" || status === "parked") {
+                reserveBtn.disabled = true;  // Disable the reserve button
+                cancelBtn.style.display = status === "reserved" ? "inline-block" : "none";
+            } else {
+                reserveBtn.disabled = false;  // Enable the reserve button
+                reserveBtn.style.display = "inline-block";
+                cancelBtn.style.display = "none";
+            }
+        }
+
+        // Fetch the slots and gate status
+        ["slot1", "slot2", "slot3"].forEach(slot => {
+            database.ref(`parking_space/${slot}/status`).on("value", function(snapshot) { // Fixed string interpolation
+                updateSlotAvailability(slot, snapshot.val());
+            });
+        });
+
+        database.ref("parking_space/gate/status").on("value", function(snapshot) {
+            document.getElementById('gate-status').textContent = snapshot.val();
+            document.getElementById('gate-status').className = `status-box ${snapshot.val().toLowerCase()}`; // Fixed class name assignment
+        });
+
+        // Modal for reservation
+        const reservationModal = document.getElementById('modal-overlay');
+        const cancelModal = document.getElementById('cancel-overlay');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        const closeCancelModalBtn = document.getElementById('close-cancel-modal-btn');
+
+        document.querySelectorAll('[id$="-reserve-btn"]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                reservationModal.classList.remove('hidden');
+                const slotId = this.id.replace('-reserve-btn', '');
+                reservationModal.setAttribute('data-slot', slotId);
+            });
+        });
+
+        closeModalBtn.addEventListener('click', () => {
+            reservationModal.classList.add('hidden');
+        });
+
+        closeCancelModalBtn.addEventListener('click', () => {
+            cancelModal.classList.add('hidden');
+        });
+
+        document.getElementById('user-details-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const slotId = reservationModal.getAttribute('data-slot');
+            const userName = document.getElementById('user-name').value;
+            const userPhone = document.getElementById('user-phone').value;
+            const userEmail = document.getElementById('user-email').value;
+            const userPlate = document.getElementById('user-plate').value;
+            const reservationDate = document.getElementById('reservation-date').value;
+            const startTime = document.getElementById('start-time').value;
+            const endTime = document.getElementById('end-time').value;
+
+            // Check for overlapping reservations
+            database.ref(`parking_space/${slotId}/reservation`).once('value').then(snapshot => {
+                const existingReservation = snapshot.val();
+                if (existingReservation && existingReservation.status === 'reserved') {
+                    const existingStart = new Date(`${existingReservation.date} ${existingReservation.time1}`);
+                    const existingEnd = new Date(`${existingReservation.date} ${existingReservation.time2}`);
+                    const newStart = new Date(`${reservationDate} ${startTime}`);
+                    const newEnd = new Date(`${reservationDate} ${endTime}`);
+
+                    if (newStart < existingEnd && newEnd > existingStart) {
+                        showToast('This time slot is already reserved. Please choose a different time.', 'error');
+                        return;
+                    }
+                }
+
+                // If no overlap, proceed with the reservation
+                database.ref(`parking_space/${slotId}/reservation`).set({
+                    status: 'reserved',
+                    name: userName,
+                    phone: userPhone,
+                    email: userEmail,
+                    plate: userPlate,
+                    date: reservationDate,
+                    time1: startTime,
+                    time2: endTime
+                }).then(() => {
+                    updateSlotAvailability(slotId, 'reserved');
+                    updateReservedSlotDisplay(slotId);
+                    reservationModal.classList.add('hidden');
+                    showToast('Reservation successful!', 'success');
+                }).catch(error => {
+                    console.error("Error reserving slot:", error);
+                    showToast('Error reserving slot: ' + error.message, 'error');
+                });
+            });
+        });
+
+        function updateReservedSlotDisplay(slotId) {
+            database.ref(`parking_space/${slotId}/reservation`).once('value').then(snapshot => {
+                const reservationData = snapshot.val();
+                const reservedSlotElement = document.getElementById(`reserved-${slotId}`);
+                if (reservationData && reservationData.status === 'reserved') {
+                    reservedSlotElement.innerHTML = `
+                        <h4>Slot ${slotId.slice(-1)} Reserved</h4>
+                        <p>Name: ${reservationData.name}</p>
+                        <p>Date: ${reservationData.date}</p>
+                        <p>Time: ${reservationData.time1} - ${reservationData.time2}</p>
+                    `;
+                } else {
+                    reservedSlotElement.innerHTML = `<p>Slot ${slotId.slice(-1)} is available</p>`;
+                }
+            });
+        }
+
+        // Call this function for each slot when the page loads
+        ['slot1', 'slot2', 'slot3'].forEach(updateReservedSlotDisplay);
+
+        document.querySelectorAll('[id$="-cancel-btn"]').forEach(btn => {
+            btn.addEventListener('click', function() {
+                cancelModal.classList.remove('hidden');
+                const slotId = this.id.replace('-cancel-btn', '');
+                cancelModal.setAttribute('data-slot', slotId);
+            });
+        });
+
+        document.getElementById('cancel-details-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const slotId = cancelModal.getAttribute('data-slot');
+            const cancelName = document.getElementById('cancel-name').value;
+            const cancelEmail = document.getElementById('cancel-email').value;
+
+            // Verify cancellation details and remove the reservation
+            database.ref(`parking_space/${slotId}/reservation`).once('value').then(snapshot => {
+                const reservationData = snapshot.val();
+                if (reservationData && reservationData.status === 'reserved') {
+                    if (reservationData.name === cancelName && reservationData.email === cancelEmail) {
+                        database.ref(`parking_space/${slotId}/reservation`).set({
+                            status: 'free'
+                        }).then(() => {
+                            updateSlotAvailability(slotId, 'free');
+                            updateReservedSlotDisplay(slotId);
+                            cancelModal.classList.add('hidden');
+                            showToast('Cancellation successful!', 'success');
+                        }).catch(error => {
+                            console.error("Error cancelling reservation:", error);
+                            showToast('Error cancelling reservation: ' + error.message, 'error');
+                        });
+                    } else {
+                        showToast("Cancellation details do not match.", 'error');
+                    }
+                } else {
+                    showToast("No reservation found for this slot.", 'error');
+                }
+            }).catch(error => {
+                console.error("Error verifying cancellation:", error);
+                showToast('Error verifying cancellation: ' + error.message, 'error');
+            });
+        });
+
+        // Prediction form submission
+        document.getElementById('prediction-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const formData = new FormData(this);
+            fetch('/predict', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultElement = document.getElementById('prediction-result');
+                resultElement.innerHTML = `
+                    <p>${data.prediction}</p>
+                    <p>Chance of availability: ${data.percentage.toFixed(2)}%</p>
+                `;
+                
+                // Add color coding based on availability percentage
+                if (data.percentage >= 70) {
+                    resultElement.style.backgroundColor = '#2ecc71';  // Green for high availability
+                } else if (data.percentage >= 30) {
+                    resultElement.style.backgroundColor = '#f39c12';  // Orange for moderate availability
+                } else {
+                    resultElement.style.backgroundColor = '#e74c3c';  // Red for low availability
+                }
+
+                // Make the result visible
+                resultElement.classList.remove('hidden');
+                resultElement.classList.add('visible');
+
+                // Scroll to the result
+                resultElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                const resultElement = document.getElementById('prediction-result');
+                resultElement.textContent = 'An error occurred while predicting.';
+                resultElement.style.backgroundColor = '#e74c3c';  // Red for error
+                resultElement.classList.remove('hidden');
+                resultElement.classList.add('visible');
+            });
+        });
+
+        // Fetch analytics data
+        function fetchAnalytics() {
+            fetch('/analytics')
+                .then(response => response.json())
+                .then(data => {
+                    console.log('Received analytics data:', data);
+
+                    document.getElementById('total-occupancy').textContent = data.total_occupancy;
+                    document.getElementById('busiest-time').textContent = data.busiest_time || 'N/A';
+                    document.getElementById('quietest-time').textContent = data.quietest_time || 'N/A';
+
+                    const avgOccupancyList = document.getElementById('avg-occupancy');
+                    avgOccupancyList.innerHTML = '';
+                    if (data.avg_occupancy) {
+                        for (const [category, value] of Object.entries(data.avg_occupancy)) {
+                            const li = document.createElement('li');
+                            li.textContent = `${category}: ${value.toFixed(2)}%`;
+                            avgOccupancyList.appendChild(li);
+                        }
+                    }
+
+                    const slotUtilizationList = document.getElementById('slot-utilization');
+                    slotUtilizationList.innerHTML = '';
+                    if (data.slot_utilization) {
+                        for (const [slot, value] of Object.entries(data.slot_utilization)) {
+                            const li = document.createElement('li');
+                            li.textContent = `${slot}: ${value.toFixed(2)}%`;
+                            slotUtilizationList.appendChild(li);
+                        }
+                    }
+
+                    // Create hourly occupancy chart
+                    createOccupancyChart(data.hourly_occupancy);
+
+                    if (data.slot_utilization_graph) {
+                        document.getElementById('slot-utilization-graph').src = `data:image/png;base64,${data.slot_utilization_graph}`;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching analytics:', error);
+                    document.getElementById('analytics-section').innerHTML = '<p class="text-red-500 text-center text-xl">Error loading analytics data. Please try again later.</p>';
+                });
+        }
+
+        function createOccupancyChart(hourlyData) {
+            const ctx = document.getElementById('occupancy-chart').getContext('2d');
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(hourlyData),
+                    datasets: [{
+                        label: 'Occupancy (%)',
+                        data: Object.values(hourlyData),
+                        borderColor: 'rgba(255, 255, 255, 0.8)',
+                        backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                        pointBackgroundColor: 'white',
+                        pointBorderColor: 'rgba(255, 255, 255, 0.8)',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: 'rgba(255, 255, 255, 1)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)',
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                maxRotation: 0,
+                                autoSkip: true,
+                                maxTicksLimit: 12,
+                                cursor: 'pointer'
+                            },
+                            title: {
+                                display: true,
+                                text: 'Hour of Day',
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.1)',
+                            },
+                            ticks: {
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                callback: function(value) {
+                                    return value + '%';
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Occupancy (%)',
+                                color: 'rgba(255, 255, 255, 0.9)',
+                                font: {
+                                    size: 14,
+                                    weight: 'bold'
+                                }
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                            titleColor: 'white',
+                            bodyColor: 'white',
+                            callbacks: {
+                                label: function(context) {
+                                    return `Occupancy: ${context.parsed.y.toFixed(2)}%`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Call fetchAnalytics when the page loads
+        document.addEventListener('DOMContentLoaded', fetchAnalytics);
+
+        // Function to show toast message
+        function showToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = 'toast-modal';
+            toast.innerHTML = `
+                <h3>${type === 'success' ? 'Success' : 'Error'}</h3>
+                <p>${message}</p>
+                <button>Close</button>
+            `;
+
+            document.body.appendChild(toast);
+
+            toast.querySelector('button').addEventListener('click', () => {
+                document.body.removeChild(toast);
+            });
+
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ParkBuddy Admin Login</title>
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='logo.ico') }}">
+    <link rel="shortcut icon" type="image/x-icon" href="{{ url_for('static', filename='logo.ico') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+        }
+        .login-container {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            width: 300px;
+        }
+        h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+        .input-group {
+            position: relative;
+            margin-bottom: 30px;
+        }
+        input {
+            width: 100%;
+            padding: 10px 0;
+            font-size: 16px;
+            color: white;
+            border: none;
+            border-bottom: 1px solid white;
+            outline: none;
+            background: transparent;
+            transition: 0.3s;
+        }
+        label {
+            position: absolute;
+            top: 0;
+            left: 0;
+            padding: 10px 0;
+            font-size: 16px;
+            color: white;
+            pointer-events: none;
+            transition: 0.3s;
+        }
+        input:focus ~ label,
+        input:valid ~ label {
+            top: -20px;
+            font-size: 12px;
+            color: #03e9f4;
+        }
+        button {
+            width: 100%;
+            padding: 10px 20px;
+            background-color: transparent;
+            color: white;
+            border: 2px solid #03e9f4;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            letter-spacing: 1px;
+            transition: 0.5s;
+            overflow: hidden;
+            position: relative;
+        }
+        button:hover {
+            background-color: #03e9f4;
+            color: #fff;
+            box-shadow: 0 0 5px #03e9f4,
+                        0 0 25px #03e9f4,
+                        0 0 50px #03e9f4,
+                        0 0 100px #03e9f4;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo img {
+            width: 80px;
+            height: auto;
+            border-radius: 50%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <div class="logo">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="ParkBuddy Logo">
+        </div>
+        <h2>Admin Login</h2>
+        <form id="login-form">
+            <div class="input-group">
+                <input type="text" id="admin-id" required>
+                <label for="admin-id">Admin ID</label>
+            </div>
+            <div class="input-group">
+                <input type="password" id="admin-password" required>
+                <label for="admin-password">Password</label>
+            </div>
+            <button type="submit" id="login-btn">Login</button>
+        </form>
+    </div>
+
+    <script>
+        // Sample admin credentials
+        const adminCredentials = {
+            id: "darish", // Replace with your actual admin ID
+            password: "12345678" // Replace with your actual password
+        };
+
+        document.getElementById('login-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const enteredId = document.getElementById('admin-id').value;
+            const enteredPassword = document.getElementById('admin-password').value;
+
+            // Check credentials
+            if (enteredId === adminCredentials.id && enteredPassword === adminCredentials.password) {
+                // Redirect to admin page
+                window.location.href = 'https://darishsfit.github.io/parkbuddy.github.io/admin.html';
+            } else {
+                alert("Invalid ID or Password. Please try again.");
+            }
+        });
+    </script>
+
+</body>
+</html>
