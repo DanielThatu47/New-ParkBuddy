@@ -5,6 +5,9 @@ import seaborn as sns
 import io
 import base64
 from predict import predict_availability
+import os
+from dotenv import load_dotenv
+load_dotenv()
 
 app = Flask(__name__, static_url_path='/static')
 
@@ -27,7 +30,9 @@ df['time'] = df['time'].astype(int)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('index.html', 
+                           firebase_api_key=os.getenv('FIREBASE_API_KEY'),
+                           firebase_app_id=os.getenv('FIREBASE_APP_ID'))
 
 @app.route('/analytics')
 def analytics():
@@ -128,5 +133,11 @@ def plot_to_base64(plt):
     img.seek(0)
     return base64.b64encode(img.getvalue()).decode()
 
-if __name__ == '__main__':
-    app.run(debug=True)
+@app.route('/admin')
+def admin():
+    return render_template('admin.html', 
+                           firebase_api_key=os.getenv('FIREBASE_API_KEY'),
+                           firebase_app_id=os.getenv('FIREBASE_APP_ID'))
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
