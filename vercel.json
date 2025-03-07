@@ -5,10 +5,13 @@
       "src": "app.py",
       "use": "@vercel/python",
       "config": {
+         "maxLambdaSize": "15mb", 
+         "runtime": "python3.9",
         "includeFiles": [
           "templates/**",
           "static/**",
-          "categorized_synthetic_data_month.csv"
+            
+       "categorized_synthetic_data_month.csv"
         ],
         "excludeFiles": [
           "tests/**",
