@@ -2,14 +2,27 @@
   "version": 2,
   "builds": [
     {
- "src": "wsgi.py", 
-"use": "@vercel/python"
- }
+      "src": "app.py",
+      "use": "@vercel/python",
+      "config": {
+        "includeFiles": [
+          "templates/**",
+          "static/**",
+          "categorized_synthetic_data_month.csv"
+        ],
+        "excludeFiles": [
+          "tests/**",
+          "docs/**",
+          "node_modules/**",
+          "large_unused_directory/**"
+        ]
+      }
+    }
   ],
   "routes": [
     {
- "src": "/(.*)", 
-  "dest": "wsgi.py" 
-}
+      "src": "/(.*)",
+      "dest": "app.py"
+    }
   ]
 }
